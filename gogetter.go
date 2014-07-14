@@ -6,6 +6,7 @@ import "encoding/json"
 import "flag"
 import "fmt"
 import "github.com/temoto/robotstxt.go"
+import "io"
 import "log"
 import "net/http"
 import "net/url"
@@ -56,31 +57,8 @@ func checkRobotsTxt(fullUrl string) (bool, error) {
 	return robots.TestAgent(original, useragent), nil
 }
 
-func getTags(url string) (map[string]string, *HttpError) {
-	permitted, err := checkRobotsTxt(url)
-	if err != nil {
-		return nil, &HttpError{err.Error(), 500}
-	}
-	if !permitted {
-		msg := fmt.Sprintf("Not permitted to fetch %s as a robot", url)
-		log.Println(msg)
-		return nil, &HttpError{msg, 403}
-	}
-	client := http.Client{}
-	req, _ := buildRequest(url)
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, &HttpError{err.Error(), 500}
-	}
-	log.Printf("Fetched %s\n", url)
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return nil, &HttpError{
-			fmt.Sprintf("Could not fetch %s", url),
-			resp.StatusCode,
-		}
-	}
-	node, err := html.Parse(resp.Body)
+func parseTags(r io.Reader) (map[string]string, *HttpError) {
+	node, err := html.Parse(r)
 	if err != nil {
 		return nil, &HttpError{err.Error(), 500}
 	}
@@ -112,6 +90,33 @@ func getTags(url string) (map[string]string, *HttpError) {
 	}
 	findmeta(node)
 	return results, nil
+}
+
+func getTags(url string) (map[string]string, *HttpError) {
+	permitted, err := checkRobotsTxt(url)
+	if err != nil {
+		return nil, &HttpError{err.Error(), 500}
+	}
+	if !permitted {
+		msg := fmt.Sprintf("Not permitted to fetch %s as a robot", url)
+		log.Println(msg)
+		return nil, &HttpError{msg, 403}
+	}
+	client := http.Client{}
+	req, _ := buildRequest(url)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, &HttpError{err.Error(), 500}
+	}
+	log.Printf("Fetched %s\n", url)
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil, &HttpError{
+			fmt.Sprintf("Could not fetch %s", url),
+			resp.StatusCode,
+		}
+	}
+	return parseTags(resp.Body)
 }
 
 func startHttpServer(address string) {
