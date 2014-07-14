@@ -10,6 +10,7 @@ import "io"
 import "log"
 import "net/http"
 import "net/url"
+import "os"
 import "regexp"
 import "strings"
 
@@ -144,12 +145,14 @@ func main() {
 	protocol := flag.String("protocol", "none", "The protocol to use. Can be 'http' or blank to start in command line mode")
 	flag.Parse()
 
-	if *protocol == "http" {
+	if *protocol == "http" || os.Getenv("GOGETTER_PROTOCOL") == "http" {
 		startHttpServer(*address)
 	} else if len(flag.Args()) != 0 {
 		tags, _ := getTags(flag.Arg(0))
 		for prop, val := range tags {
 			fmt.Printf("%s -- %s\n", prop, val)
 		}
+	} else {
+		panic("Need to use this properly and I need to print usage info!")
 	}
 }
