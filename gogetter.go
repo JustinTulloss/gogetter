@@ -17,7 +17,7 @@ var ogmatcher = regexp.MustCompile("^(og|airbedandbreakfast|twitter):")
 var useragent = "Gogetter (https://github.com/JustinTulloss/gogetter) (like GoogleBot)"
 
 type HttpError struct {
-	msg string
+	msg        string
 	StatusCode int
 }
 
@@ -62,13 +62,13 @@ func parseTags(r io.Reader) (map[string]string, *HttpError) {
 	if err != nil {
 		return nil, &HttpError{err.Error(), 500}
 	}
-	var findmeta func (*html.Node)
+	var findmeta func(*html.Node)
 	results := make(map[string]string)
 	// Recursively goes through nodes looking for meta nodes that
 	// have a property tag that matches the opengraph regex. If it does,
 	// Saves the contents to the results map.
 	findmeta = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.DataAtom == atom.Meta  {
+		if n.Type == html.ElementNode && n.DataAtom == atom.Meta {
 			var content, property string
 			save := false
 			for _, a := range n.Attr {
@@ -80,7 +80,7 @@ func parseTags(r io.Reader) (map[string]string, *HttpError) {
 					content = html.UnescapeString(a.Val)
 				}
 			}
-			if (save) {
+			if save {
 				results[property] = content
 			}
 		}
@@ -121,7 +121,7 @@ func getTags(url string) (map[string]string, *HttpError) {
 
 func startHttpServer(address string) {
 	log.Printf("Starting http server on %s\n", address)
-	var handler http.HandlerFunc = func (w http.ResponseWriter, r *http.Request) {
+	var handler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
 		tags, err := getTags(strings.TrimPrefix(r.URL.Path, "/"))
 		if err != nil {
 			http.Error(w, err.Error(), err.StatusCode)
@@ -145,7 +145,7 @@ func main() {
 	flag.Parse()
 
 	if *protocol == "http" {
-		startHttpServer(*address);
+		startHttpServer(*address)
 	} else if len(flag.Args()) != 0 {
 		tags, _ := getTags(flag.Arg(0))
 		for prop, val := range tags {
