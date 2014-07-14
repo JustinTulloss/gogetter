@@ -12,7 +12,7 @@ import "net/url"
 import "regexp"
 import "strings"
 
-var ogmatcher = regexp.MustCompile("^(og|airbedandbreakfast):")
+var ogmatcher = regexp.MustCompile("^(og|airbedandbreakfast|twitter):")
 var useragent = "Gogetter (https://github.com/JustinTulloss/gogetter) (like GoogleBot)"
 
 type HttpError struct {
@@ -94,7 +94,7 @@ func getTags(url string) (map[string]string, *HttpError) {
 			var content, property string
 			save := false
 			for _, a := range n.Attr {
-				if a.Key == "property" && ogmatcher.FindStringIndex(a.Val) != nil {
+				if (a.Key == "property" || a.Key == "name") && ogmatcher.FindStringIndex(a.Val) != nil {
 					save = true
 					property = html.UnescapeString(a.Val)
 				}
