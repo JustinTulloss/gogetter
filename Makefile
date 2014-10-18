@@ -10,4 +10,7 @@ deploy:
 clean:
 	rm gogetter
 
+dev: gogetter
+	PROTOCOL=http gin -b gogetter
+
 .PHONY: deploy run clean

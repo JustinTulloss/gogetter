@@ -1,21 +1,24 @@
 package main
 
-import "code.google.com/p/go.net/html"
-import "code.google.com/p/go.net/html/atom"
-import "encoding/json"
-import "flag"
-import "fmt"
-import "github.com/temoto/robotstxt.go"
-import "io"
-import "log"
-import "net/http"
-import "net/url"
-import "os"
-import "regexp"
-import "strings"
+import (
+	"flag"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"regexp"
+	"strings"
+
+	"code.google.com/p/go.net/html"
+	"code.google.com/p/go.net/html/atom"
+	"github.com/JustinTulloss/hut"
+	"github.com/temoto/robotstxt.go"
+)
 
 var ogmatcher = regexp.MustCompile("^(og|airbedandbreakfast|twitter):")
 var useragent = "Gogetter (https://github.com/JustinTulloss/gogetter) (like GoogleBot)"
+var service *hut.Service
 
 type HttpError struct {
 	msg        string
@@ -120,33 +123,29 @@ func getTags(url string) (map[string]string, *HttpError) {
 	return parseTags(resp.Body)
 }
 
-func startHttpServer(address string) {
-	log.Printf("Starting http server on %s\n", address)
-	var handler http.HandlerFunc = func(w http.ResponseWriter, r *http.Request) {
-		tags, err := getTags(strings.TrimPrefix(r.URL.Path, "/"))
-		if err != nil {
-			http.Error(w, err.Error(), err.StatusCode)
-			return
-		}
-		encoded, err2 := json.Marshal(tags)
-		if err2 != nil {
-			http.Error(w, err2.Error(), 500)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(encoded)
+func handler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		service.ErrorReply(err, w)
+		return
 	}
-	http.ListenAndServe(address, handler)
+	tags, err := getTags(strings.TrimPrefix(r.Form.Get("url"), "/"))
+	if err != nil {
+		service.HttpErrorReply(w, err.Error(), err.StatusCode)
+		return
+	}
+	service.Reply(tags, w)
 }
 
 func main() {
-	// First we deal with getting the arguments out
-	address := flag.String("address", ":8080", "The address to bind to. Defaults to ':8080'")
-	protocol := flag.String("protocol", "none", "The protocol to use. Can be 'http' or blank to start in command line mode")
-	flag.Parse()
+	service = hut.NewService(nil)
+	service.Router.HandleFunc("/", handler)
 
-	if *protocol == "http" || os.Getenv("GOGETTER_PROTOCOL") == "http" {
-		startHttpServer(*address)
+	protocol, err := service.Env.Get("protocol")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if protocol == "http" {
+		service.Start()
 	} else if len(flag.Args()) != 0 {
 		tags, _ := getTags(flag.Arg(0))
 		for prop, val := range tags {
