@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"strings"
 
 	"code.google.com/p/go.net/html"
 	"code.google.com/p/go.net/html/atom"
@@ -128,9 +127,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		service.ErrorReply(err, w)
 		return
 	}
-	tags, err := getTags(strings.TrimPrefix(r.Form.Get("url"), "/"))
+	decodedUrl, err := url.QueryUnescape(r.Form.Get("url"))
 	if err != nil {
-		service.HttpErrorReply(w, err.Error(), err.StatusCode)
+		service.ErrorReply(err, w)
+		return
+	}
+	tags, httpErr := getTags(decodedUrl)
+	if httpErr != nil {
+		service.HttpErrorReply(w, httpErr.Error(), httpErr.StatusCode)
 		return
 	}
 	service.Reply(tags, w)
