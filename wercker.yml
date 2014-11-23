@@ -7,6 +7,13 @@ build:
     # at the right place in the workspace tree
     - setup-go-workspace
 
+    # Authentication information for docker hub
+    - create-file:
+      name: Save .dockercfg
+      filename: $HOME/.dockercfg
+      overwrite: true
+      content: $DOCKER_HUB_AUTH
+
     # Gets the dependencies
     - script:
         name: go get
