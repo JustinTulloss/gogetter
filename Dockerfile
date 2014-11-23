@@ -1,4 +1,4 @@
-FROM busybox
+FROM scratch
 
 ENV PROTOCOL http
 ENV PORT 8080
