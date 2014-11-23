@@ -12,6 +12,7 @@ build:
         name: Save .dockercfg
         filename: $HOME/.dockercfg
         overwrite: true
+        hide-from-log: true
         content: $DOCKER_HUB_AUTH
 
     # Gets the dependencies
