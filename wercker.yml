@@ -9,10 +9,10 @@ build:
 
     # Authentication information for docker hub
     - create-file:
-      name: Save .dockercfg
-      filename: $HOME/.dockercfg
-      overwrite: true
-      content: $DOCKER_HUB_AUTH
+        name: Save .dockercfg
+        filename: $HOME/.dockercfg
+        overwrite: true
+        content: $DOCKER_HUB_AUTH
 
     # Gets the dependencies
     - script:
