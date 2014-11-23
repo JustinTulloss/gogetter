@@ -1,5 +1,5 @@
-FROM google/golang-runtime
+FROM golang:1.3.3-onbuild
 
-ENV GOGETTER_PROTOCOL http
+ENV PROTOCOL http
 
 EXPOSE 8080
