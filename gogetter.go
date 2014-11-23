@@ -9,10 +9,10 @@ import (
 	"net/url"
 	"regexp"
 
-	"code.google.com/p/go.net/html"
-	"code.google.com/p/go.net/html/atom"
 	"github.com/JustinTulloss/hut"
 	"github.com/temoto/robotstxt.go"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 var ogmatcher = regexp.MustCompile("^(og|airbedandbreakfast|twitter):")
