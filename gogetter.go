@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
 	"regexp"
 
@@ -16,8 +17,9 @@ import (
 )
 
 var ogmatcher = regexp.MustCompile("^(og|airbedandbreakfast|twitter):")
-var useragent = "Gogetter (https://github.com/JustinTulloss/gogetter) (like GoogleBot)"
+var useragent = "Gogetter (https://github.com/JustinTulloss/gogetter) (like GoogleBot and facebookexternalhit)"
 var service *hut.Service
+var jar *cookiejar.Jar
 
 type HttpError struct {
 	msg        string
@@ -42,7 +44,9 @@ func checkRobotsTxt(fullUrl string) (bool, error) {
 	}
 	original := parsed.Path
 	parsed.Path = "robots.txt"
-	client := http.Client{}
+	client := http.Client{
+		Jar: jar,
+	}
 	req, err := buildRequest(parsed.String())
 	if err != nil {
 		return false, err
@@ -105,7 +109,9 @@ func getTags(url string) (map[string]string, *HttpError) {
 		log.Println(msg)
 		return nil, &HttpError{msg, 403}
 	}
-	client := http.Client{}
+	client := http.Client{
+		Jar: jar,
+	}
 	req, _ := buildRequest(url)
 	resp, err := client.Do(req)
 	if err != nil {
@@ -141,9 +147,15 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	var err error
 	service = hut.NewService(nil)
+	jar, err = cookiejar.New(nil)
+	if err != nil {
+		service.Log.Error().Printf("Could not create cookie jar: %s\n", err)
+	}
 	service.Router.HandleFunc("/", handler)
 
+	flag.Parse()
 	protocol, err := service.Env.Get("protocol")
 	if err != nil {
 		log.Fatal(err)
@@ -151,7 +163,11 @@ func main() {
 	if protocol == "http" {
 		service.Start()
 	} else if len(flag.Args()) != 0 {
-		tags, _ := getTags(flag.Arg(0))
+		tags, err := getTags(flag.Arg(0))
+		if err != nil {
+			fmt.Printf("Could not fetch: %s\n", err)
+			return
+		}
 		for prop, val := range tags {
 			fmt.Printf("%s -- %s\n", prop, val)
 		}
