@@ -44,6 +44,7 @@ func checkRobotsTxt(fullUrl string) (bool, error) {
 	}
 	original := parsed.Path
 	parsed.Path = "robots.txt"
+	parsed.RawQuery = ""
 	client := http.Client{
 		Jar: jar,
 	}
