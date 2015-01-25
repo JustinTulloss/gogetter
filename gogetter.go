@@ -18,7 +18,7 @@ import (
 	"golang.org/x/net/html/atom"
 )
 
-var ogmatcher = regexp.MustCompile("^(og|airbedandbreakfast|twitter):")
+var ogmatcher = regexp.MustCompile("(^(og|airbedandbreakfast|twitter):|^description$)")
 var useragent = "Gogetter (https://github.com/JustinTulloss/gogetter) (like GoogleBot and facebookexternalhit)"
 var service *hut.Service
 var client *http.Client
@@ -75,6 +75,9 @@ func parseTags(r io.Reader) (map[string]string, *HttpError) {
 	// have a property tag that matches the opengraph regex. If it does,
 	// Saves the contents to the results map.
 	findmeta = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.DataAtom == atom.Title {
+			results["title"] = n.FirstChild.Data
+		}
 		if n.Type == html.ElementNode && n.DataAtom == atom.Meta {
 			var content, property string
 			save := false
