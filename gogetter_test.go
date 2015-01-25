@@ -5,8 +5,8 @@ import "strings"
 import "testing"
 
 type doctest struct {
-	doc string
-	tags map[string] string
+	doc  string
+	tags map[string]string
 }
 
 var testdocs = []doctest{
@@ -19,6 +19,7 @@ var testdocs = []doctest{
 		</html>`,
 		map[string]string{
 			"og:title": "More interesting",
+			"title":    "Not interesting",
 		},
 	},
 	{
@@ -27,6 +28,7 @@ var testdocs = []doctest{
 		<meta property="og:title" content="relevant" />`,
 		map[string]string{
 			"og:title": "relevant",
+			"title":    "not interesting",
 		},
 	},
 	{
@@ -41,13 +43,18 @@ var testdocs = []doctest{
 			"airbedandbreakfast:test": "airbnb works",
 		},
 	},
+	{
+		`<meta property="description" content="pod (plain old descriptions) work" />`,
+		map[string]string{
+			"description": "pod (plain old descriptions) work",
+		},
+	},
 }
-
 
 func TestParseTags(t *testing.T) {
 	t.Parallel()
 	for _, doctest := range testdocs {
-		testresult, err:= parseTags(strings.NewReader(doctest.doc))
+		testresult, err := parseTags(strings.NewReader(doctest.doc))
 		if err != nil {
 			t.Errorf(err.Error())
 		}
