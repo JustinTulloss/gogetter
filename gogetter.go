@@ -164,10 +164,7 @@ func main() {
 	}
 
 	flag.Parse()
-	protocol, err := service.Env.Get("protocol")
-	if err != nil {
-		log.Fatal(err)
-	}
+	protocol := service.Env.Get("protocol")
 	if protocol == "http" {
 		service.Start()
 	} else if len(flag.Args()) != 0 {
