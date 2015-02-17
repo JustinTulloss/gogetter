@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
@@ -120,8 +121,9 @@ func getTags(url string) (map[string]string, *HttpError) {
 	log.Printf("Fetched %s\n", url)
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
+		body, _ := ioutil.ReadAll(resp.Body)
 		return nil, &HttpError{
-			fmt.Sprintf("Could not fetch %s", url),
+			fmt.Sprintf("Could not fetch %s: %s", url, body),
 			resp.StatusCode,
 		}
 	}
