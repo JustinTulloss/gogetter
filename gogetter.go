@@ -4,12 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/JustinTulloss/hut"
@@ -79,6 +79,21 @@ func parseTags(r io.Reader) (map[string]string, *HttpError) {
 		if n.Type == html.ElementNode && n.DataAtom == atom.Title {
 			results["title"] = n.FirstChild.Data
 		}
+		if n.Type == html.ElementNode && n.DataAtom == atom.Link {
+			var href string
+			save := false
+			for _, a := range n.Attr {
+				if a.Key == "rel" && strings.Contains(a.Val, "icon") {
+					save = true
+				}
+				if a.Key == "href" {
+					href = html.UnescapeString(a.Val)
+				}
+			}
+			if save {
+				results["favicon"] = href
+			}
+		}
 		if n.Type == html.ElementNode && n.DataAtom == atom.Meta {
 			var content, property string
 			save := false
@@ -121,9 +136,8 @@ func getTags(url string) (map[string]string, *HttpError) {
 	log.Printf("Fetched %s\n", url)
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		body, _ := ioutil.ReadAll(resp.Body)
 		return nil, &HttpError{
-			fmt.Sprintf("Could not fetch %s: %s", url, body),
+			fmt.Sprintf("Could not fetch %s, request was: %v", url, req),
 			resp.StatusCode,
 		}
 	}
