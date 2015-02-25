@@ -41,6 +41,9 @@ func buildRequest(url string) (*http.Request, error) {
 }
 
 func checkRobotsTxt(fullUrl string) (bool, error) {
+	if service.Env.GetString("CHECK_ROBOTS_TXT") == "false" {
+		return true, nil
+	}
 	parsed, err := url.Parse(fullUrl)
 	if err != nil {
 		return false, err
