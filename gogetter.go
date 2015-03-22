@@ -3,23 +3,22 @@ package main
 import (
 	"flag"
 	"fmt"
+	"html"
 	"io"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/JustinTulloss/hut"
+	"github.com/PuerkitoBio/goquery"
 	"github.com/facebookgo/httpcontrol"
 	"github.com/temoto/robotstxt.go"
-	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
 )
 
-var ogmatcher = regexp.MustCompile("(^(og|airbedandbreakfast|twitter):|^description$)")
+var ogPrefixes = []string{"og", "airbedandbreakfast", "twitter"}
+
 var useragent = "Gogetter (https://github.com/JustinTulloss/gogetter) (like GoogleBot and facebookexternalhit)"
 var service *hut.Service
 var client *http.Client
@@ -69,55 +68,36 @@ func checkRobotsTxt(fullUrl string) (bool, error) {
 }
 
 func parseTags(r io.Reader) (map[string]string, *HttpError) {
-	node, err := html.Parse(r)
+	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return nil, &HttpError{err.Error(), 500}
 	}
-	var findmeta func(*html.Node)
 	results := make(map[string]string)
-	// Recursively goes through nodes looking for meta nodes that
-	// have a property tag that matches the opengraph regex. If it does,
-	// Saves the contents to the results map.
-	findmeta = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.DataAtom == atom.Title {
-			results["title"] = n.FirstChild.Data
-		}
-		if n.Type == html.ElementNode && n.DataAtom == atom.Link {
-			var href string
-			save := false
-			for _, a := range n.Attr {
-				if a.Key == "rel" && strings.Contains(a.Val, "icon") {
-					save = true
-				}
-				if a.Key == "href" {
-					href = html.UnescapeString(a.Val)
-				}
-			}
-			if save {
-				results["favicon"] = href
-			}
-		}
-		if n.Type == html.ElementNode && n.DataAtom == atom.Meta {
-			var content, property string
-			save := false
-			for _, a := range n.Attr {
-				if (a.Key == "property" || a.Key == "name") && ogmatcher.FindStringIndex(a.Val) != nil {
-					save = true
-					property = html.UnescapeString(a.Val)
-				}
-				if a.Key == "content" {
-					content = html.UnescapeString(a.Val)
-				}
-			}
-			if save {
-				results[property] = content
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findmeta(c)
-		}
+	// First we deal with a couple special tags to get the title
+	// and the favicon
+	title := doc.Find("title").Text()
+	if title != "" {
+		results["title"] = html.UnescapeString(title)
 	}
-	findmeta(node)
+	favicon, ok := doc.Find("link[rel~=icon]").Attr("href")
+	if ok {
+		results["favicon"] = html.UnescapeString(favicon)
+	}
+	// Find all meta tags for all different og prefixes we support
+	tags := doc.Find(`meta[name="description"]`)
+	for _, prefix := range ogPrefixes {
+		tags = tags.Add(fmt.Sprintf(`meta[property^="%s:"]`, prefix))
+		tags = tags.Add(fmt.Sprintf(`meta[name^="%s:"]`, prefix))
+	}
+	// For all the tags, extract the content
+	tags.Each(func(i int, selection *goquery.Selection) {
+		key, ok := selection.Attr("name")
+		if !ok {
+			key, _ = selection.Attr("property")
+		}
+		content, _ := selection.Attr("content")
+		results[key] = html.UnescapeString(content)
+	})
 	return results, nil
 }
 

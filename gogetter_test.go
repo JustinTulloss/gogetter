@@ -44,7 +44,7 @@ var testdocs = []doctest{
 		},
 	},
 	{
-		`<meta property="description" content="pod (plain old descriptions) work" />`,
+		`<meta name="description" content="pod (plain old descriptions) work" />`,
 		map[string]string{
 			"description": "pod (plain old descriptions) work",
 		},
