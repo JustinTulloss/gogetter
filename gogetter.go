@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/JustinTulloss/hut"
@@ -124,7 +126,18 @@ func getTags(url string) (map[string]string, *HttpError) {
 			resp.StatusCode,
 		}
 	}
-	return parseTags(resp.Body)
+	// We can't really trust the Content-Type header, so we take
+	// a look at what actually gets returned.
+	contentStart, err := ioutil.ReadAll(io.LimitReader(resp.Body, 512))
+	contentType := http.DetectContentType(contentStart)
+	switch {
+	case strings.Contains(contentType, "text/html"):
+		return parseTags(resp.Body)
+	default:
+		return map[string]string{
+			"mimeType": contentType,
+		}, nil
+	}
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
