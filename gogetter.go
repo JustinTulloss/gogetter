@@ -38,6 +38,7 @@ func buildRequest(url string) (*http.Request, error) {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", useragent)
+	req.Header.Set("Accept", "*/*")
 	return req, nil
 }
 
@@ -113,7 +114,7 @@ func getTags(url string) (map[string]string, *HttpError) {
 		log.Println(msg)
 		return nil, &HttpError{msg, 403}
 	}
-	req, _ := buildRequest(url)
+	req, err := buildRequest(url)
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, &HttpError{err.Error(), 500}
@@ -121,19 +122,28 @@ func getTags(url string) (map[string]string, *HttpError) {
 	log.Printf("Fetched %s\n", url)
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, &HttpError{err.Error(), 500}
+		}
 		return nil, &HttpError{
-			fmt.Sprintf("Could not fetch %s, request was: %v", url, req),
+			fmt.Sprintf("Could not fetch %s: %s", url, string(body)),
 			resp.StatusCode,
 		}
 	}
-	// We can't really trust the Content-Type header, so we take
-	// a look at what actually gets returned.
-	contentStart, err := ioutil.ReadAll(io.LimitReader(resp.Body, 512))
-	contentType := http.DetectContentType(contentStart)
+	contentType := resp.Header.Get("Content-Type")
 	switch {
+	case contentType == "":
+		fallthrough
 	case strings.Contains(contentType, "text/html"):
 		return parseTags(resp.Body)
 	default:
+		// We can't really trust the Content-Type header, so we take
+		// a look at what actually gets returned.
+		contentStart, err := ioutil.ReadAll(io.LimitReader(resp.Body, 512))
+		if err != nil {
+			contentType = http.DetectContentType(contentStart)
+		}
 		return map[string]string{
 			"mimeType": contentType,
 		}, nil
@@ -182,7 +192,7 @@ func main() {
 	} else if len(flag.Args()) != 0 {
 		tags, err := getTags(flag.Arg(0))
 		if err != nil {
-			fmt.Printf("Could not fetch: %s\n", err)
+			fmt.Printf("Could not fetch (%d): %s\n", err.StatusCode, err)
 			return
 		}
 		for prop, val := range tags {
