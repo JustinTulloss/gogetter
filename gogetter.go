@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/JustinTulloss/gogetter/wildcard"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/facebookgo/httpcontrol"
 	"github.com/temoto/robotstxt.go"
@@ -102,7 +103,7 @@ func (s *Scraper) ParseTags(r io.Reader) (map[string]string, error) {
 	return results, nil
 }
 
-func (s *Scraper) ScrapeTags(url string) (map[string]string, error) {
+func (s *Scraper) ScrapeTags(url string) (interface{}, error) {
 	permitted, err := s.checkRobotsTxt(url)
 	if err != nil {
 		return nil, err
@@ -130,6 +131,10 @@ func (s *Scraper) ScrapeTags(url string) (map[string]string, error) {
 		fallthrough
 	case strings.Contains(contentType, "text/html"):
 		return s.ParseTags(resp.Body)
+	case strings.HasPrefix(contentType, "image"):
+		card := wildcard.NewImageCard(url, url)
+		card.Media.ImageContentType = contentType
+		return card, nil
 	default:
 		// We can't really trust the Content-Type header, so we take
 		// a look at what actually gets returned.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -50,9 +51,11 @@ func main() {
 			fmt.Printf("Could not fetch: %s\n", err)
 			return
 		}
-		for prop, val := range tags {
-			fmt.Printf("%s -- %s\n", prop, val)
+		jsonTags, err := json.MarshalIndent(tags, "", "\t")
+		if err != nil {
+			fmt.Printf("Could not marshal json: %s\n", err)
 		}
+		fmt.Println(jsonTags)
 	} else {
 		panic("Need to use this properly and I need to print usage info!")
 	}
