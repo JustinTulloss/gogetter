@@ -1,4 +1,4 @@
-package main
+package gogetter
 
 import "reflect"
 import "strings"
@@ -53,8 +53,13 @@ var testdocs = []doctest{
 
 func TestParseTags(t *testing.T) {
 	t.Parallel()
+	scraper, err := NewScraper("", false)
+	if err != nil {
+		t.Logf("Could not create scraper: %s\n", err)
+		t.Fail()
+	}
 	for _, doctest := range testdocs {
-		testresult, err := parseTags(strings.NewReader(doctest.doc))
+		testresult, err := scraper.ParseTags(strings.NewReader(doctest.doc))
 		if err != nil {
 			t.Errorf(err.Error())
 		}

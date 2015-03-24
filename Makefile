@@ -13,7 +13,7 @@ push: docker-image
 	docker push $(IMG)
 
 run:
-	go run gogetter.go
+	go run cmd/main.go
 
 deploy:
 	git aws.push

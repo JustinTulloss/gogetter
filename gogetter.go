@@ -1,49 +1,47 @@
-package main
+package gogetter
 
 import (
-	"flag"
+	"errors"
 	"fmt"
 	"html"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/JustinTulloss/hut"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/facebookgo/httpcontrol"
 	"github.com/temoto/robotstxt.go"
 )
 
+// There are potentially a ton of these as any facebook app can enter their own
+// prefixes.
 var ogPrefixes = []string{"og", "airbedandbreakfast", "twitter"}
 
-var useragent = "Gogetter (https://github.com/JustinTulloss/gogetter) (like GoogleBot and facebookexternalhit)"
-var service *hut.Service
-var client *http.Client
+const DEFAULT_UA = "Gogetter (https://github.com/JustinTulloss/gogetter) (like GoogleBot and facebookexternalhit)"
 
-type HttpError struct {
-	msg        string
-	StatusCode int
+// A Scraper instance can be used to scrape webpages for metadata.
+type Scraper struct {
+	useragent            string
+	shouldCheckRobotsTxt bool
+	client               *http.Client
 }
 
-func (e *HttpError) Error() string { return e.msg }
-
-func buildRequest(url string) (*http.Request, error) {
+func (s *Scraper) buildRequest(url string) (*http.Request, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("User-Agent", useragent)
+	req.Header.Set("User-Agent", s.useragent)
 	req.Header.Set("Accept", "*/*")
 	return req, nil
 }
 
-func checkRobotsTxt(fullUrl string) (bool, error) {
-	if service.Env.GetString("CHECK_ROBOTS_TXT") == "false" {
+func (s *Scraper) checkRobotsTxt(fullUrl string) (bool, error) {
+	if !s.shouldCheckRobotsTxt {
 		return true, nil
 	}
 	parsed, err := url.Parse(fullUrl)
@@ -53,11 +51,11 @@ func checkRobotsTxt(fullUrl string) (bool, error) {
 	original := parsed.Path
 	parsed.Path = "robots.txt"
 	parsed.RawQuery = ""
-	req, err := buildRequest(parsed.String())
+	req, err := s.buildRequest(parsed.String())
 	if err != nil {
 		return false, err
 	}
-	resp, err := client.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -67,13 +65,13 @@ func checkRobotsTxt(fullUrl string) (bool, error) {
 		// Assume we can crawl if the robots.txt file doesn't work
 		return true, nil
 	}
-	return robots.TestAgent(original, useragent), nil
+	return robots.TestAgent(original, s.useragent), nil
 }
 
-func parseTags(r io.Reader) (map[string]string, *HttpError) {
+func (s *Scraper) ParseTags(r io.Reader) (map[string]string, error) {
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
-		return nil, &HttpError{err.Error(), 500}
+		return nil, err
 	}
 	results := make(map[string]string)
 	// First we deal with a couple special tags to get the title
@@ -104,39 +102,34 @@ func parseTags(r io.Reader) (map[string]string, *HttpError) {
 	return results, nil
 }
 
-func getTags(url string) (map[string]string, *HttpError) {
-	permitted, err := checkRobotsTxt(url)
+func (s *Scraper) ScrapeTags(url string) (map[string]string, error) {
+	permitted, err := s.checkRobotsTxt(url)
 	if err != nil {
-		return nil, &HttpError{err.Error(), 500}
+		return nil, err
 	}
 	if !permitted {
-		msg := fmt.Sprintf("Not permitted to fetch %s as a robot", url)
-		log.Println(msg)
-		return nil, &HttpError{msg, 403}
+		return nil, errors.New(fmt.Sprintf("Not permitted to fetch %s", url))
 	}
-	req, err := buildRequest(url)
-	resp, err := client.Do(req)
+	req, err := s.buildRequest(url)
+	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, &HttpError{err.Error(), 500}
+		return nil, err
 	}
-	log.Printf("Fetched %s\n", url)
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return nil, &HttpError{err.Error(), 500}
+			return nil, err
 		}
-		return nil, &HttpError{
-			fmt.Sprintf("Could not fetch %s: %s", url, string(body)),
-			resp.StatusCode,
-		}
+		errMsg := fmt.Sprintf("Could not fetch %s: %s", url, string(body))
+		return nil, errors.New(errMsg)
 	}
 	contentType := resp.Header.Get("Content-Type")
 	switch {
 	case contentType == "":
 		fallthrough
 	case strings.Contains(contentType, "text/html"):
-		return parseTags(resp.Body)
+		return s.ParseTags(resp.Body)
 	default:
 		// We can't really trust the Content-Type header, so we take
 		// a look at what actually gets returned.
@@ -150,55 +143,25 @@ func getTags(url string) (map[string]string, *HttpError) {
 	}
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		service.ErrorReply(err, w)
-		return
-	}
-	decodedUrl, err := url.QueryUnescape(r.Form.Get("url"))
-	if err != nil {
-		service.ErrorReply(err, w)
-		return
-	}
-	tags, httpErr := getTags(decodedUrl)
-	if httpErr != nil {
-		service.HttpErrorReply(w, httpErr.Error(), httpErr.StatusCode)
-		return
-	}
-	service.Reply(tags, w)
-}
-
-func main() {
-	var err error
-	service = hut.NewService(nil)
+// Creates a new scraper. If no user agent is provided, DEFAULT_UA is used.
+func NewScraper(ua string, shouldCheckRobotsTxt bool) (*Scraper, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		service.Log.Error().Printf("Could not create cookie jar: %s\n", err)
+		return nil, err
 	}
-	service.Router.HandleFunc("/", handler)
-
-	client = &http.Client{
+	client := &http.Client{
 		Transport: &httpcontrol.Transport{
 			RequestTimeout: 10 * time.Second,
 			MaxTries:       3,
 		},
 		Jar: jar,
 	}
-
-	flag.Parse()
-	protocol := service.Env.Get("protocol")
-	if protocol == "http" {
-		service.Start()
-	} else if len(flag.Args()) != 0 {
-		tags, err := getTags(flag.Arg(0))
-		if err != nil {
-			fmt.Printf("Could not fetch (%d): %s\n", err.StatusCode, err)
-			return
-		}
-		for prop, val := range tags {
-			fmt.Printf("%s -- %s\n", prop, val)
-		}
-	} else {
-		panic("Need to use this properly and I need to print usage info!")
+	if ua == "" {
+		ua = DEFAULT_UA
 	}
+	return &Scraper{
+		useragent:            ua,
+		shouldCheckRobotsTxt: shouldCheckRobotsTxt,
+		client:               client,
+	}, nil
 }
