@@ -1,10 +1,10 @@
 IMG=jmtulloss/gogetter
 
 gogetter: gogetter.go
-	go build
+	go build -o gogetter cmd/main.go
 
 gogetter-linux:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o gogetter cmd/main.go
 
 docker-image: gogetter-linux
 	docker build -t $(IMG) .
@@ -15,13 +15,7 @@ push: docker-image
 run:
 	go run cmd/main.go
 
-deploy:
-	git aws.push
-
 clean:
 	rm gogetter
 
-dev: gogetter
-	PROTOCOL=http gin -b gogetter
-
-.PHONY: deploy run clean
+.PHONY: run clean push docker-image gogetter-linux

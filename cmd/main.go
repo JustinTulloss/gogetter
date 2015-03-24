@@ -35,13 +35,13 @@ func main() {
 	var err error
 	service = hut.NewService(nil)
 	service.Router.HandleFunc("/", handler)
-	scraper, err = gogetter.NewScraper("", service.Env.GetBool("CHECK_ROBOTS_TXT"))
+	scraper, err = gogetter.NewScraper("", service.Env.GetBool("check_robots_txt"))
 	if err != nil {
 		service.Log.Error().Fatalln(err)
 	}
 
 	flag.Parse()
-	protocol := service.Env.Get("protocol")
+	protocol := service.Env.GetString("protocol")
 	if protocol == "http" {
 		service.Start()
 	} else if len(flag.Args()) != 0 {
