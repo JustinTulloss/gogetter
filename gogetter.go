@@ -15,6 +15,7 @@ import (
 	"github.com/JustinTulloss/gogetter/wildcard"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/facebookgo/httpcontrol"
+	"github.com/mitchellh/mapstructure"
 	"github.com/temoto/robotstxt.go"
 )
 
@@ -29,6 +30,67 @@ type Scraper struct {
 	useragent            string
 	shouldCheckRobotsTxt bool
 	client               *http.Client
+}
+
+var tagAliases = map[string][]string{
+	"og:description": {"twitter:description", "description"},
+	"og:title":       {"twitter:title", "title"},
+}
+
+// Finds other names for the same value and puts it in the map
+// under the name we prefer.
+func resolveAliases(tags map[string]string) {
+	for tag, aliases := range tagAliases {
+		_, ok := tags[tag]
+		if ok {
+			continue
+		}
+		for _, alias := range aliases {
+			val, ok := tags[alias]
+			if ok {
+				tags[tag] = val
+				break
+			}
+		}
+	}
+}
+
+func convertTagsToCard(tags map[string]string, webUrl string) (wildcard.Wildcard, error) {
+	resolveAliases(tags)
+	ogType, ok := tags["og:type"]
+	if !ok {
+		ogType = "website"
+	}
+	decoderConfig := &mapstructure.DecoderConfig{
+		WeaklyTypedInput: true,
+		TagName:          "ogtag",
+	}
+	var card wildcard.Wildcard
+	switch ogType {
+	/*
+		case "video.episode":
+			fallthrough
+		case "video.movie":
+			fallthrough
+		case "video.other":
+	*/
+	default:
+		url, ok := tags["og:url"]
+		if !ok {
+			url = webUrl
+		}
+		card = wildcard.NewLinkCard(webUrl, url)
+		decoderConfig.Result = card.(*wildcard.LinkCard).Target
+	}
+	decoder, err := mapstructure.NewDecoder(decoderConfig)
+	if err != nil {
+		return nil, err
+	}
+	err = decoder.Decode(tags)
+	if err != nil {
+		return nil, err
+	}
+	return card, nil
 }
 
 func (s *Scraper) buildRequest(url string) (*http.Request, error) {
@@ -69,7 +131,7 @@ func (s *Scraper) checkRobotsTxt(fullUrl string) (bool, error) {
 	return robots.TestAgent(original, s.useragent), nil
 }
 
-func (s *Scraper) ParseTags(r io.Reader) (map[string]string, error) {
+func (s *Scraper) ParseTags(r io.Reader, url string) (wildcard.Wildcard, error) {
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return nil, err
@@ -100,7 +162,11 @@ func (s *Scraper) ParseTags(r io.Reader) (map[string]string, error) {
 		content, _ := selection.Attr("content")
 		results[key] = html.UnescapeString(content)
 	})
-	return results, nil
+	card, err := convertTagsToCard(results, url)
+	if err != nil {
+		return nil, err
+	}
+	return card, nil
 }
 
 func (s *Scraper) ScrapeTags(url string) (interface{}, error) {
@@ -126,25 +192,28 @@ func (s *Scraper) ScrapeTags(url string) (interface{}, error) {
 		return nil, errors.New(errMsg)
 	}
 	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" || strings.Contains(contentType, "text/html") {
+		return s.ParseTags(resp.Body, url)
+	}
+	// We can't really trust the Content-Type header, so we take
+	// a look at what actually gets returned.
+	contentStart, err := ioutil.ReadAll(io.LimitReader(resp.Body, 512))
+	if err != nil {
+		contentType = http.DetectContentType(contentStart)
+	}
 	switch {
-	case contentType == "":
-		fallthrough
-	case strings.Contains(contentType, "text/html"):
-		return s.ParseTags(resp.Body)
 	case strings.HasPrefix(contentType, "image"):
 		card := wildcard.NewImageCard(url, url)
 		card.Media.ImageContentType = contentType
 		return card, nil
+	case strings.HasPrefix(contentType, "video"):
+		card := wildcard.NewVideoCard(url)
+		card.Media.StreamUrl = url
+		card.Media.StreamContentType = contentType
+		return card, nil
 	default:
-		// We can't really trust the Content-Type header, so we take
-		// a look at what actually gets returned.
-		contentStart, err := ioutil.ReadAll(io.LimitReader(resp.Body, 512))
-		if err != nil {
-			contentType = http.DetectContentType(contentStart)
-		}
-		return map[string]string{
-			"mimeType": contentType,
-		}, nil
+		card := wildcard.NewLinkCard(url, url)
+		return card, nil
 	}
 }
 

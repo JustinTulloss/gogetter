@@ -55,7 +55,7 @@ func main() {
 		if err != nil {
 			fmt.Printf("Could not marshal json: %s\n", err)
 		}
-		fmt.Println(jsonTags)
+		fmt.Println(string(jsonTags))
 	} else {
 		panic("Need to use this properly and I need to print usage info!")
 	}
