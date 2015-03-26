@@ -1,4 +1,4 @@
-// Structs for wildcard schema, documnted here:
+// Structs for wildcard schema, documented here:
 // http://www.trywildcard.com/docs/schema/
 package wildcard
 

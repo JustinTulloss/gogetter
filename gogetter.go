@@ -62,6 +62,7 @@ func resolveAliases(tags map[string]string) {
 	}
 }
 
+// Used by recusivelyDecode to look at every field in a struct
 func iterateOverFields(value reflect.Value, tags map[string]string) error {
 	for i := 0; i < value.NumField(); i++ {
 		field := value.Field(i)
@@ -84,6 +85,11 @@ func iterateOverFields(value reflect.Value, tags map[string]string) error {
 	return nil
 }
 
+// This is a hacky way of transferring a flat map of tags to values into a
+// nested structure. Since each leaf in the structure has a unique key in the
+// flat map, we can just iterate through every struct that might potentially
+// have tags (as indicated by the `ogtag` struct tag) and try to match the
+// tags to the fields using mapstructure.
 func recursivelyDecode(tags map[string]string, result interface{}) error {
 	decoderConfig := &mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,
