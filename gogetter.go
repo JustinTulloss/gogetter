@@ -34,13 +34,14 @@ type Scraper struct {
 }
 
 var tagAliases = map[string][]string{
-	"og:description":         {"twitter:description", "description"},
-	"og:title":               {"twitter:title", "title"},
-	"og:image":               {"twitter:image"},
-	"al:iphone:url":          {"twitter:app:url:iphone"},
-	"al:ipad:url":            {"twitter:app:url:ipad"},
 	"al:android:url":         {"twitter:app:url:googleplay"},
+	"al:ipad:url":            {"twitter:app:url:ipad"},
+	"al:iphone:url":          {"twitter:app:url:iphone"},
 	"article:published_time": {"article:published"},
+	"og:description":         {"twitter:description", "description"},
+	"og:image":               {"twitter:image"},
+	"og:site_name":           {"cre"},
+	"og:title":               {"twitter:title", "title"},
 }
 
 // Finds other names for the same value and puts it in the map
@@ -163,6 +164,8 @@ func (s *Scraper) checkRobotsTxt(fullUrl string) (bool, error) {
 	return robots.TestAgent(original, s.useragent), nil
 }
 
+var rawMetaTags = []string{"cre"}
+
 func (s *Scraper) ParseTags(r io.Reader, url string) (wildcard.Wildcard, error) {
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
@@ -181,6 +184,9 @@ func (s *Scraper) ParseTags(r io.Reader, url string) (wildcard.Wildcard, error) 
 	}
 	// Find all meta tags for all different og prefixes we support
 	tags := doc.Find(`meta[name="description"]`)
+	for _, metaTag := range rawMetaTags {
+		tags = tags.Add(fmt.Sprintf(`meta[name="%s"]`, metaTag))
+	}
 	for _, prefix := range ogPrefixes {
 		tags = tags.Add(fmt.Sprintf(`meta[property^="%s:"]`, prefix))
 		tags = tags.Add(fmt.Sprintf(`meta[name^="%s:"]`, prefix))
