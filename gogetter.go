@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"reflect"
 	"strings"
 	"time"
 
@@ -35,6 +36,10 @@ type Scraper struct {
 var tagAliases = map[string][]string{
 	"og:description": {"twitter:description", "description"},
 	"og:title":       {"twitter:title", "title"},
+	"og:image":       {"twitter:image"},
+	"al:iphone:url":  {"twitter:app:url:iphone"},
+	"al:ipad:url":    {"twitter:app:url:ipad"},
+	"al:android:url": {"twitter:app:url:googleplay"},
 }
 
 // Finds other names for the same value and puts it in the map
@@ -55,15 +60,51 @@ func resolveAliases(tags map[string]string) {
 	}
 }
 
+func iterateOverFields(value reflect.Value, tags map[string]string) error {
+	for i := 0; i < value.NumField(); i++ {
+		field := value.Field(i)
+		structField := value.Type().Field(i)
+		if field.Kind() == reflect.Ptr && field.CanSet() && structField.Tag.Get("ogtag") != "" {
+			if field.IsNil() && field.CanSet() {
+				field.Set(reflect.New(field.Type().Elem()))
+			}
+			err := recursivelyDecode(tags, field.Interface())
+			if err != nil {
+				return err
+			}
+		} else if field.Kind() == reflect.Struct && structField.Anonymous {
+			err := iterateOverFields(field, tags)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func recursivelyDecode(tags map[string]string, result interface{}) error {
+	decoderConfig := &mapstructure.DecoderConfig{
+		WeaklyTypedInput: true,
+		TagName:          "ogtag",
+		Result:           result,
+	}
+	decoder, err := mapstructure.NewDecoder(decoderConfig)
+	if err != nil {
+		return err
+	}
+	err = decoder.Decode(tags)
+	if err != nil {
+		return err
+	}
+	value := reflect.Indirect(reflect.ValueOf(result))
+	return iterateOverFields(value, tags)
+}
+
 func convertTagsToCard(tags map[string]string, webUrl string) (wildcard.Wildcard, error) {
 	resolveAliases(tags)
 	ogType, ok := tags["og:type"]
 	if !ok {
 		ogType = "website"
-	}
-	decoderConfig := &mapstructure.DecoderConfig{
-		WeaklyTypedInput: true,
-		TagName:          "ogtag",
 	}
 	var card wildcard.Wildcard
 	switch ogType {
@@ -80,13 +121,8 @@ func convertTagsToCard(tags map[string]string, webUrl string) (wildcard.Wildcard
 			url = webUrl
 		}
 		card = wildcard.NewLinkCard(webUrl, url)
-		decoderConfig.Result = card.(*wildcard.LinkCard).Target
 	}
-	decoder, err := mapstructure.NewDecoder(decoderConfig)
-	if err != nil {
-		return nil, err
-	}
-	err = decoder.Decode(tags)
+	err := recursivelyDecode(tags, card)
 	if err != nil {
 		return nil, err
 	}

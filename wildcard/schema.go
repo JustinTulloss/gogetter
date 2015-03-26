@@ -40,15 +40,17 @@ type Card struct {
 type GenericMetadata struct {
 	Title           string     `json:"title,omitempty" ogtag:"og:title"`
 	PublicationDate *time.Time `json:"publication_date,omitempty"`
-	Source          string     `json:"source,omitempty"`
+	Source          string     `json:"source,omitempty" ogtag:"og:site_name"`
 	Keywords        []string   `json:"keywords,omitempty"`
 
 	// Our own addition, wildcard has a neutered version
-	AppLink *applink.AppLink `json:"al,omitempty"`
+	AppLink *applink.AppLink `json:"app_link,omitempty" ogtag:",fill"`
 
 	// Our own addition, is usually the favicon
 	SourceIcon string `json:"source_icon,omitempty" ogtag:"favicon"`
-	ImageUrl   string `json:"image_url,omitempty" ogtag:"og:image"`
+
+	// Our own addition since why wouldn't everything have an image?
+	Image *ImageDetails `json:"image,omitempty" ogtag:",fill"`
 }
 
 type Article struct {
@@ -94,19 +96,23 @@ func NewVideoCard(originalUrl string) *VideoCard {
 	}
 }
 
-type ImageMedia struct {
-	Type     MediaType `json:"type"`
-	ImageUrl string    `json:"image_url"`
-
-	//Optional
-	ImageCaption    string `json:"image_caption,omitempty"`
-	Author          string `json:"author,omitempty"`
-	Width           int    `json:"width,omitempty"`
-	Height          int    `json:"height,omitempty"`
-	GenericMetadata `ogtag:",squash"`
+type ImageDetails struct {
+	ImageUrl string `json:"image_url" ogtag:"og:image"`
+	Width    int    `json:"width,omitempty" ogtag:"og:image:width"`
+	Height   int    `json:"height,omitempty" ogtag:"og:image:height"`
 
 	// Added by us
 	ImageContentType string `json:"image_content_type,omitempty"`
+}
+
+type ImageMedia struct {
+	Type MediaType `json:"type"`
+	ImageDetails
+
+	//Optional
+	ImageCaption string `json:"image_caption,omitempty"`
+	Author       string `json:"author,omitempty"`
+	GenericMetadata
 }
 
 type ImageCard struct {
@@ -121,8 +127,10 @@ func NewImageCard(originalUrl, src string) *ImageCard {
 			WebUrl:   originalUrl,
 		},
 		&ImageMedia{
-			Type:     ImageMediaType,
-			ImageUrl: src,
+			Type: ImageMediaType,
+			ImageDetails: ImageDetails{
+				ImageUrl: src,
+			},
 		},
 	}
 }
@@ -135,7 +143,7 @@ type LinkTarget struct {
 
 type LinkCard struct {
 	Card
-	Target *LinkTarget `json:"target"`
+	Target *LinkTarget `json:"target" ogtag:",fill"`
 }
 
 func NewLinkCard(originalUrl, linkUrl string) *LinkCard {
