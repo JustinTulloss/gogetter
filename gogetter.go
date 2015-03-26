@@ -34,12 +34,13 @@ type Scraper struct {
 }
 
 var tagAliases = map[string][]string{
-	"og:description": {"twitter:description", "description"},
-	"og:title":       {"twitter:title", "title"},
-	"og:image":       {"twitter:image"},
-	"al:iphone:url":  {"twitter:app:url:iphone"},
-	"al:ipad:url":    {"twitter:app:url:ipad"},
-	"al:android:url": {"twitter:app:url:googleplay"},
+	"og:description":         {"twitter:description", "description"},
+	"og:title":               {"twitter:title", "title"},
+	"og:image":               {"twitter:image"},
+	"al:iphone:url":          {"twitter:app:url:iphone"},
+	"al:ipad:url":            {"twitter:app:url:ipad"},
+	"al:android:url":         {"twitter:app:url:googleplay"},
+	"article:published_time": {"article:published"},
 }
 
 // Finds other names for the same value and puts it in the map
@@ -107,19 +108,14 @@ func convertTagsToCard(tags map[string]string, webUrl string) (wildcard.Wildcard
 		ogType = "website"
 	}
 	var card wildcard.Wildcard
+	url, ok := tags["og:url"]
+	if !ok {
+		url = webUrl
+	}
 	switch ogType {
-	/*
-		case "video.episode":
-			fallthrough
-		case "video.movie":
-			fallthrough
-		case "video.other":
-	*/
+	case "article":
+		card = wildcard.NewArticleCard(webUrl, url)
 	default:
-		url, ok := tags["og:url"]
-		if !ok {
-			url = webUrl
-		}
 		card = wildcard.NewLinkCard(webUrl, url)
 	}
 	err := recursivelyDecode(tags, card)

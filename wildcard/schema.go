@@ -39,7 +39,7 @@ type Card struct {
 // Metadata that pretty much every topic has
 type GenericMetadata struct {
 	Title           string     `json:"title,omitempty" ogtag:"og:title"`
-	PublicationDate *time.Time `json:"publication_date,omitempty"`
+	PublicationDate *time.Time `json:"publication_date,omitempty" ogtag:"article:published_time"`
 	Source          string     `json:"source,omitempty" ogtag:"og:site_name"`
 	Keywords        []string   `json:"keywords,omitempty"`
 
@@ -54,7 +54,7 @@ type GenericMetadata struct {
 }
 
 type Article struct {
-	AbstractContent string   `json:"abstract_content"`
+	AbstractContent string   `json:"abstract_content" ogtag:"og:description"`
 	IsBreaking      bool     `json:"is_breaking,omitempty"`
 	Contributors    []string `json:"contributors,omitempty"`
 	GenericMetadata `ogtag:",squash"`
@@ -62,7 +62,17 @@ type Article struct {
 
 type ArticleCard struct {
 	Card
-	Article *Article
+	Article *Article `json:"article" ogtag:",fill"`
+}
+
+func NewArticleCard(webUrl, articleUrl string) *ArticleCard {
+	return &ArticleCard{
+		Card{
+			CardType: ArticleType,
+			WebUrl:   webUrl,
+		},
+		&Article{},
+	}
 }
 
 type VideoMedia struct {
