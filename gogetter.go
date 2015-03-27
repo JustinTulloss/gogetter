@@ -172,7 +172,7 @@ func (s *Scraper) checkRobotsTxt(fullUrl string) (bool, error) {
 
 var rawMetaTags = []string{"cre"}
 
-func (s *Scraper) ParseTags(r io.Reader, url string) (wildcard.Wildcard, error) {
+func (s *Scraper) ParseTags(r io.Reader, webUrl string) (wildcard.Wildcard, error) {
 	doc, err := goquery.NewDocumentFromReader(r)
 	if err != nil {
 		return nil, err
@@ -186,7 +186,17 @@ func (s *Scraper) ParseTags(r io.Reader, url string) (wildcard.Wildcard, error) 
 	}
 	favicon, ok := doc.Find("link[rel~=icon]").Attr("href")
 	if ok {
-		results["favicon"] = html.UnescapeString(favicon)
+		faviconUrl, err := url.Parse(favicon)
+		if err == nil {
+			if faviconUrl.Scheme == "" {
+				faviconUrl.Scheme = "http"
+			}
+			if faviconUrl.Host == "" {
+				u, _ := url.Parse(webUrl)
+				faviconUrl.Host = u.Host
+			}
+			results["favicon"] = faviconUrl.String()
+		}
 	}
 	// Find all meta tags for all different og prefixes we support
 	tags := doc.Find(`meta[name="description"]`)
@@ -210,7 +220,7 @@ func (s *Scraper) ParseTags(r io.Reader, url string) (wildcard.Wildcard, error) 
 			results[key] = html.UnescapeString(content)
 		}
 	})
-	card, err := convertTagsToCard(results, url)
+	card, err := convertTagsToCard(results, webUrl)
 	if err != nil {
 		return nil, err
 	}
