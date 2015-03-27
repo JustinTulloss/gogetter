@@ -204,7 +204,11 @@ func (s *Scraper) ParseTags(r io.Reader, url string) (wildcard.Wildcard, error) 
 			key, _ = selection.Attr("property")
 		}
 		content, _ := selection.Attr("content")
-		results[key] = html.UnescapeString(content)
+		// Open graph defers to the first tag that we understand.
+		_, alreadySet := results[key]
+		if !alreadySet {
+			results[key] = html.UnescapeString(content)
+		}
 	})
 	card, err := convertTagsToCard(results, url)
 	if err != nil {
