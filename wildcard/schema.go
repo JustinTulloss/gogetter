@@ -86,14 +86,14 @@ type VideoMedia struct {
 	// Optional
 	StreamUrl         string `json:"stream_url,omitempty" ogtag:"og:video:url"`
 	StreamContentType string `json:"stream_content_type,omitempty" ogtag:"og:video:type"`
-	PosterImageUrl    string `json:"poster_image_url,omitempty"`
+	PosterImageUrl    string `json:"poster_image_url,omitempty" ogtag:"og:image:url"`
 	Creator           string `json:"creator,omitempty"`
 	GenericMetadata   `ogtag:",squash"`
 }
 
 type VideoCard struct {
 	Card
-	Media *VideoMedia `json:"media"`
+	Media *VideoMedia `json:"media" ogtag:",fill"`
 }
 
 func NewVideoCard(originalUrl string) *VideoCard {
@@ -102,7 +102,9 @@ func NewVideoCard(originalUrl string) *VideoCard {
 			CardType: VideoType,
 			WebUrl:   originalUrl,
 		},
-		&VideoMedia{},
+		&VideoMedia{
+			Type: VideoMediaType,
+		},
 	}
 }
 

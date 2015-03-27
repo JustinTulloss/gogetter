@@ -122,6 +122,14 @@ func convertTagsToCard(tags map[string]string, webUrl string) (wildcard.Wildcard
 	switch ogType {
 	case "article":
 		card = wildcard.NewArticleCard(webUrl, url)
+	case "video":
+		fallthrough
+	case "video.episode":
+		fallthrough
+	case "video.movie":
+		fallthrough
+	case "video.other":
+		card = wildcard.NewVideoCard(webUrl)
 	default:
 		card = wildcard.NewLinkCard(webUrl, url)
 	}
