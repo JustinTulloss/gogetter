@@ -54,6 +54,7 @@ type GenericMetadata struct {
 }
 
 type Article struct {
+	Url             string   `json:"url"`
 	AbstractContent string   `json:"abstract_content" ogtag:"og:description"`
 	IsBreaking      bool     `json:"is_breaking,omitempty"`
 	Contributors    []string `json:"contributors,omitempty"`
@@ -71,7 +72,9 @@ func NewArticleCard(webUrl, articleUrl string) *ArticleCard {
 			CardType: ArticleType,
 			WebUrl:   webUrl,
 		},
-		&Article{},
+		&Article{
+			Url: articleUrl,
+		},
 	}
 }
 
