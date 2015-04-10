@@ -259,6 +259,7 @@ type Place struct {
 	Location        *GeoCoordinates `json:"location,omitempty"`
 	Rating          *Rating         `json:"rating,omitempty"`
 	Hours           *Hours          `json:"hours,omitempty"`
+	PhoneNumber     string          `json:"phoneNumber,omitempty"`
 	GenericMetadata `ogtag:",squash"`
 }
 
