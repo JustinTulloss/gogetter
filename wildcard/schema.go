@@ -3,6 +3,7 @@
 package wildcard
 
 import (
+	"errors"
 	"time"
 
 	"github.com/JustinTulloss/gogetter/applink"
@@ -14,6 +15,7 @@ const (
 	ArticleType       CardType = "article"
 	ImageType         CardType = "image"
 	LinkType          CardType = "link"
+	PlaceType         CardType = "place"
 	ProductSearchType CardType = "product_search"
 	ProductType       CardType = "product"
 	ReviewType        CardType = "review"
@@ -171,4 +173,96 @@ func NewLinkCard(originalUrl, linkUrl string) *LinkCard {
 			Url: linkUrl,
 		},
 	}
+}
+
+// Like, where to send snail mail. Quite possibly a physical address.
+type PostalAddress struct {
+	StreetAddress       string `json:"streetAddress"`
+	PostOfficeBoxNumber string `json:"postOfficeBoxNumber,omitempty"`
+	// In the US, this is the city
+	Locality string `json:"locality,omitempty"`
+	// In the US, this is the state
+	Region     string `json:"region,omitempty"`
+	PostalCode string `json:"postalCode,omitempty"`
+	Country    string `json:"country,omitempty"`
+}
+
+type GeoCoordinates struct {
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+	Elevation float64 `json:"elevation,omitempty"`
+}
+
+type Rating struct {
+	// What this is actually rated.
+	Value string `json:"value"`
+
+	// If this thing is perfect, this is what it would be rated.
+	BestRating string `json:"bestRating,omitempty"`
+
+	// This is almost always 1 (and should be assumed to be 1 if it's missing),
+	// but it's the minimum rating.
+	WorstRating string `json:"worstRating,omitempty"`
+
+	// Using an int32 here even though it limits things to 4 billion ratings.
+	RatingCount int32 `json:"ratingCount,omitempty"`
+	ReviewCount int32 `json:"reviewCount,omitempty"`
+
+	// An image that can be used to represent this rating.
+	ImageUrl string `json:"imageUrl,omitempty"`
+}
+
+// This is different than the regular go time.Time because it serializes
+// to a 24 hour clock instead of an actual point in time.
+// Courtesy of @smagch -- https://gist.github.com/smagch/d2a55c60bbd76930c79f
+var timeLayout = "15:04"
+var TimeParseError = errors.New(`TimeParseError: should be a string formatted as "15:04:05"`)
+
+type Time struct {
+	time.Time
+}
+
+func (t Time) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + t.Format(timeLayout) + `"`), nil
+}
+
+func (t *Time) UnmarshalJSON(b []byte) error {
+	s := string(b)
+	// len(`"23:59"`) == 7
+	if len(s) != 7 {
+		return TimeParseError
+	}
+	ret, err := time.Parse(timeLayout, s[1:6])
+	if err != nil {
+		return err
+	}
+	t.Time = ret
+	return nil
+}
+
+type TimeRange [2]Time
+
+// This is mostly borrowed from foursquare, not schema.org
+type Hours struct {
+	Days []time.Weekday `json:"days"`
+	// The indexes in the Open field match the indexes in the Days field.
+	// Together they map when the place is open.
+	Open []TimeRange `json:"open"`
+}
+
+type Place struct {
+	Url         string `json:"url"`
+	Description string `json:"description,omitempty"`
+
+	// Despite the "PostalAddress" type, this should be a physical address.
+	Address         *PostalAddress  `json:"address,omitempty"`
+	Location        *GeoCoordinates `json:"location,omitempty"`
+	Rating          *Rating         `json:"rating,omitempty"`
+	Hours           *Hours          `json:"hours,omitempty"`
+	GenericMetadata `ogtag:",squash"`
+}
+
+type PlaceCard struct {
+	Card
+	Place *Place
 }
