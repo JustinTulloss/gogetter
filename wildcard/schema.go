@@ -4,6 +4,8 @@ package wildcard
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/JustinTulloss/gogetter/applink"
@@ -187,10 +189,29 @@ type PostalAddress struct {
 	Country    string `json:"country,omitempty"`
 }
 
+// Returns the address as a nicely formatted string on a single line.
+// TODO: Make this deal with missing data better
+func (a *PostalAddress) Formatted() string {
+	addr := strings.Replace(a.StreetAddress, "\n", ", ", -1)
+	if addr == "" {
+		addr = a.PostOfficeBoxNumber
+	}
+	return fmt.Sprintf("%s, %s, %s, %s, %s", addr, a.Locality, a.Region, a.PostalCode, a.Country)
+}
+
+// TODO: Make this deal with missing data better
+func (a *PostalAddress) MultiLineFormatted() string {
+	addr := a.StreetAddress
+	if addr == "" {
+		addr = a.PostOfficeBoxNumber
+	}
+	return fmt.Sprintf("%s\n%s\n%s\n%s\n%s", addr, a.Locality, a.Region, a.PostalCode, a.Country)
+}
+
 type GeoCoordinates struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	Elevation float64 `json:"elevation,omitempty"`
+	Latitude  *float64 `json:"latitude"`
+	Longitude *float64 `json:"longitude"`
+	Elevation *float64 `json:"elevation,omitempty"`
 }
 
 type Rating struct {
@@ -261,6 +282,12 @@ type Place struct {
 	Hours           *Hours          `json:"hours,omitempty"`
 	PhoneNumber     string          `json:"phone_number,omitempty"`
 	GenericMetadata `ogtag:",squash"`
+}
+
+func (p *Place) HasLocation() bool {
+	return p.Location != nil &&
+		p.Location.Latitude != nil &&
+		p.Location.Longitude != nil
 }
 
 type PlaceCard struct {
