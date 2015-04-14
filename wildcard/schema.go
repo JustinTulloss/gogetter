@@ -177,13 +177,13 @@ func NewLinkCard(originalUrl, linkUrl string) *LinkCard {
 
 // Like, where to send snail mail. Quite possibly a physical address.
 type PostalAddress struct {
-	StreetAddress       string `json:"streetAddress"`
-	PostOfficeBoxNumber string `json:"postOfficeBoxNumber,omitempty"`
+	StreetAddress       string `json:"street_address"`
+	PostOfficeBoxNumber string `json:"post_office_box_number,omitempty"`
 	// In the US, this is the city
 	Locality string `json:"locality,omitempty"`
 	// In the US, this is the state
 	Region     string `json:"region,omitempty"`
-	PostalCode string `json:"postalCode,omitempty"`
+	PostalCode string `json:"postal_code,omitempty"`
 	Country    string `json:"country,omitempty"`
 }
 
@@ -198,18 +198,18 @@ type Rating struct {
 	Value string `json:"value"`
 
 	// If this thing is perfect, this is what it would be rated.
-	BestRating string `json:"bestRating,omitempty"`
+	BestRating string `json:"best_rating,omitempty"`
 
 	// This is almost always 1 (and should be assumed to be 1 if it's missing),
 	// but it's the minimum rating.
-	WorstRating string `json:"worstRating,omitempty"`
+	WorstRating string `json:"worst_rating,omitempty"`
 
 	// Using an int32 here even though it limits things to 4 billion ratings.
-	RatingCount int32 `json:"ratingCount,omitempty"`
-	ReviewCount int32 `json:"reviewCount,omitempty"`
+	RatingCount int32 `json:"rating_count,omitempty"`
+	ReviewCount int32 `json:"review_count,omitempty"`
 
 	// An image that can be used to represent this rating.
-	ImageUrl string `json:"imageUrl,omitempty"`
+	ImageUrl string `json:"image_url,omitempty"`
 }
 
 // This is different than the regular go time.Time because it serializes
@@ -259,11 +259,21 @@ type Place struct {
 	Location        *GeoCoordinates `json:"location,omitempty"`
 	Rating          *Rating         `json:"rating,omitempty"`
 	Hours           *Hours          `json:"hours,omitempty"`
-	PhoneNumber     string          `json:"phoneNumber,omitempty"`
+	PhoneNumber     string          `json:"phone_number,omitempty"`
 	GenericMetadata `ogtag:",squash"`
 }
 
 type PlaceCard struct {
 	Card
-	Place *Place
+	Place *Place `json:"place"`
+}
+
+func NewPlaceCard(webUrl string) *PlaceCard {
+	return &PlaceCard{
+		Card{
+			CardType: PlaceType,
+			WebUrl:   webUrl,
+		},
+		&Place{},
+	}
 }
