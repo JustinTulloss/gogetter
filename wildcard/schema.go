@@ -272,16 +272,17 @@ type Hours struct {
 }
 
 type Place struct {
-	Url         string `json:"url"`
+	Url         string `json:"url,omitempty"`
 	Description string `json:"description,omitempty"`
 
 	// Despite the "PostalAddress" type, this should be a physical address.
-	Address         *PostalAddress  `json:"address,omitempty"`
-	Location        *GeoCoordinates `json:"location,omitempty"`
-	Rating          *Rating         `json:"rating,omitempty"`
-	Hours           *Hours          `json:"hours,omitempty"`
-	PhoneNumber     string          `json:"phone_number,omitempty"`
-	GenericMetadata `ogtag:",squash"`
+	Address              *PostalAddress  `json:"address,omitempty"`
+	Location             *GeoCoordinates `json:"location,omitempty"`
+	Rating               *Rating         `json:"rating,omitempty"`
+	Hours                *Hours          `json:"hours,omitempty"`
+	PhoneNumber          string          `json:"phone_number,omitempty"`
+	FormattedPhoneNumber string          `json:"formatted_phone_number,omitempty"`
+	GenericMetadata      `ogtag:",squash"`
 }
 
 func (p *Place) HasLocation() bool {
