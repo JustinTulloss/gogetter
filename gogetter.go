@@ -38,10 +38,11 @@ var tagAliases = map[string][]string{
 	"al:ipad:url":            {"twitter:app:url:ipad"},
 	"al:iphone:url":          {"twitter:app:url:iphone"},
 	"article:published_time": {"article:published"},
-	"og:description":         {"twitter:description", "description"},
-	"og:image":               {"twitter:image"},
-	"og:site_name":           {"cre"},
-	"og:title":               {"twitter:title", "title"},
+	"byl":            {"author"},
+	"og:description": {"twitter:description", "description"},
+	"og:image":       {"twitter:image"},
+	"og:site_name":   {"cre"},
+	"og:title":       {"twitter:title", "title"},
 }
 
 // Finds other names for the same value and puts it in the map
@@ -178,7 +179,7 @@ func (s *Scraper) checkRobotsTxt(fullUrl string) (bool, error) {
 	return robots.TestAgent(original, s.useragent), nil
 }
 
-var rawMetaTags = []string{"cre"}
+var rawMetaTags = []string{"cre", "byl", "author"}
 
 func (s *Scraper) ParseTags(r io.Reader, webUrl string) (wildcard.Wildcard, error) {
 	doc, err := goquery.NewDocumentFromReader(r)

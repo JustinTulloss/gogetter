@@ -62,6 +62,7 @@ type Article struct {
 	AbstractContent string   `json:"abstract_content" ogtag:"og:description"`
 	IsBreaking      bool     `json:"is_breaking,omitempty"`
 	Contributors    []string `json:"contributors,omitempty"`
+	Byline          string   `json:"byline,omitempty" ogtag:"byl"`
 	GenericMetadata `ogtag:",squash"`
 }
 
