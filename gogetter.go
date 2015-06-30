@@ -24,7 +24,7 @@ import (
 // prefixes.
 var ogPrefixes = []string{"og", "airbedandbreakfast", "twitter"}
 
-const DEFAULT_UA = "Gogetter (https://github.com/JustinTulloss/gogetter) (like GoogleBot and facebookexternalhit)"
+const DEFAULT_UA = "Gogetter (https://github.com/JustinTulloss/gogetter) (like GoogleBot and facebookexternalhit/1.1 and Twitterbot/1.0)"
 
 // A Scraper instance can be used to scrape webpages for metadata.
 type Scraper struct {
@@ -222,6 +222,7 @@ func (s *Scraper) ParseTags(r io.Reader, webUrl string) (wildcard.Wildcard, erro
 		if !ok {
 			key, _ = selection.Attr("property")
 		}
+		fmt.Println(key)
 		content, _ := selection.Attr("content")
 		// Open graph defers to the first tag that we understand.
 		_, alreadySet := results[key]
