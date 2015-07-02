@@ -222,7 +222,6 @@ func (s *Scraper) ParseTags(r io.Reader, webUrl string) (wildcard.Wildcard, erro
 		if !ok {
 			key, _ = selection.Attr("property")
 		}
-		fmt.Println(key)
 		content, _ := selection.Attr("content")
 		// Open graph defers to the first tag that we understand.
 		_, alreadySet := results[key]
