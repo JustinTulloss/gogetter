@@ -38,7 +38,7 @@ func main() {
 	service.Router.HandleFunc("/", handler)
 	scraper, err = gogetter.NewScraper("", service.Env.GetBool("check_robots_txt"))
 	if err != nil {
-		service.Log.Error().Fatalln(err)
+		service.Log.Fatal("Could not create a scraper", "err", err)
 	}
 
 	flag.Parse()

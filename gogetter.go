@@ -251,11 +251,7 @@ func (s *Scraper) ScrapeTags(url string) (interface{}, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		errMsg := fmt.Sprintf("Could not fetch %s: %s", url, string(body))
+		errMsg := fmt.Sprintf("Could not fetch %s (%d)", url, resp.StatusCode)
 		return nil, errors.New(errMsg)
 	}
 	contentType := resp.Header.Get("Content-Type")
@@ -292,8 +288,11 @@ func NewScraper(ua string, shouldCheckRobotsTxt bool) (*Scraper, error) {
 	}
 	client := &http.Client{
 		Transport: &httpcontrol.Transport{
-			RequestTimeout: 10 * time.Second,
-			MaxTries:       3,
+			// This is a one off scrape job, no reason to keep the
+			// connection around.
+			DisableKeepAlives: true,
+			RequestTimeout:    1 * time.Minute,
+			MaxTries:          3,
 		},
 		Jar: jar,
 	}

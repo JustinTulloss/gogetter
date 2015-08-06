@@ -92,6 +92,7 @@ type VideoMedia struct {
 	EmbeddedUrlHeight string `json:"embedded_url_height" ogtag:"og:video:height"`
 
 	// Optional
+	Description       string `json:"description,omitempty" ogtag:"og:description"`
 	StreamUrl         string `json:"stream_url,omitempty" ogtag:"og:video:url"`
 	StreamContentType string `json:"stream_content_type,omitempty" ogtag:"og:video:type"`
 	PosterImageUrl    string `json:"poster_image_url,omitempty" ogtag:"og:image:url"`
